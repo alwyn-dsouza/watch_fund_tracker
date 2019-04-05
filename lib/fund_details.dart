@@ -29,12 +29,13 @@ class FundDetails extends DBInterface {
               ,currentFunds TEXT
               ,targetFunds TEXT
               ,weeklyContribution TEXT
+              ,weeklyAutoDeposit INTEGER
               )
      """);
     await db.execute("""
      insert into 
-     my_fund_tracker_table(currentFunds,targetFunds, weeklyContribution) 
-     values( "0","21075","0")              
+     my_fund_tracker_table(currentFunds,targetFunds, weeklyContribution, weeklyAutoDeposit) 
+     values( "0","0","0",0)              
      """);
     print('Table created ');
   }

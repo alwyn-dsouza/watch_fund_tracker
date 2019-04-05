@@ -8,8 +8,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:watch_fund_tracker/fund_data_model.dart';
 import 'package:watch_fund_tracker/fund_details.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:watch_fund_tracker/settings_page.dart';
 
 void main() {
   /// The default is to dump the error to the console.
@@ -44,16 +46,15 @@ class MyStatefulWidget extends StatefulWidget {
 }
 
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
+
   double _currentFunds = 0.0;
   double _targetFunds = 0.0;
   double _weeklyContribution = 0.0;
-  double _amountHundreds = 0.0;
-  double _amountTens = 0.0;
-  double _amountOnes = 0.0;
   double _weeksRemaining = 0;
   double _percentComplete = 0;
   double _enteredText = 0.0;
   Color _progressColor = Colors.red;
+  int _weeklyAutoDeposit = 0;
 
   FundDetails _db = FundDetails();
   final scaffoldKey = new GlobalKey<ScaffoldState>();
@@ -89,9 +90,32 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                         color: Colors.black,
                         fontWeight: FontWeight.w700,
                         fontSize: 20.0)),
+                SizedBox(
+                  width: 15.0,
+                ),
+
               ],
             ),
           ),
+          actions: <Widget>[
+            // action button
+            IconButton(
+              icon: Icon(Icons.settings),
+              color: Colors.black,
+              onPressed: () {
+                FundDataModel _myData = FundDataModel(_currentFunds,
+                    _targetFunds,
+                    _weeklyContribution,
+                    _weeksRemaining,
+                    _percentComplete,
+                    _enteredText,
+                    _progressColor,
+                    _weeklyAutoDeposit);
+                Route route = MaterialPageRoute(builder: (context) => SettingsPage(myData:_myData));
+                Navigator.push(context, route);
+              },
+            ),
+          ],
         ),
         body: StaggeredGridView.count(
           crossAxisCount: 2,
@@ -104,8 +128,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
             _weeksRemainingWidget(),
           ],
           staggeredTiles: [
-            StaggeredTile.extent(2, 200.0),
-            StaggeredTile.extent(2, 200.0),
+            StaggeredTile.extent(2, 230.0),
+            StaggeredTile.extent(2, 190.0),
             StaggeredTile.extent(2, 150.0),
           ],
         ));
@@ -126,6 +150,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
               _targetFunds = double.parse('${snapshot.data[0]['targetFunds']}');
               _weeklyContribution =
                   double.parse('${snapshot.data[0]['weeklyContribution']}');
+              _weeklyAutoDeposit = int.parse('${snapshot.data[0]['weeklyAutoDeposit']}');
+
               if (_targetFunds > 0) {
                 _percentComplete = _currentFunds / _targetFunds;
               } else {
@@ -145,8 +171,6 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
               } else {
                 _progressColor = Colors.green;
               }
-
-              //_percentComplete = double.parse(_percentComplete.toStringAsFixed(2));
 
               return _buildTile(
                 Padding(
@@ -195,7 +219,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                           animationDuration: 1000,
                           lineHeight: 30.0,
                           percent: _percentComplete,
-                          //center: Text('${_percentComplete * 100} %'),
+                          center:
+                              Text('\$ ${_targetFunds - _currentFunds} Left'),
                           linearStrokeCap: LinearStrokeCap.butt,
                           progressColor: _progressColor,
                         ),
@@ -229,37 +254,20 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                   _enteredText = double.parse(text.toString());
                 },
               ),
+              SizedBox(
+                height: 15.0,
+              ),
               Row(
                 children: <Widget>[
-                  RaisedButton(
-                    onPressed: () {
-                      setState(() {
-                        _submitAddCurrentFunds(_enteredText);
-                      });
-                    },
-                    child: const Text('Add'),
-                  ),
+                  roundedRectButton("Add", addFundsGradients, false,
+                      ButtonPressType.addButtonType),
                   SizedBox(
                     width: 15.0,
                   ),
-                  RaisedButton(
-                    onPressed: () {
-                      setState(() {
-                        _submitSubtractCurrentFunds(_enteredText);
-                      });
-                    },
-                    child: const Text('Subtract'),
-                  ),
+                  roundedRectButton("Remove", removeFundsGradients, false,
+                      ButtonPressType.subtractButtonType),
                   SizedBox(
                     width: 15.0,
-                  ),
-                  RaisedButton(
-                    onPressed: () {
-                      setState(() {
-                        _submitUpdateWeekly(_enteredText);
-                      });
-                    },
-                    child: const Text('Update weekly'),
                   ),
                 ],
               ),
@@ -279,6 +287,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
               print('_weeksRemainingWidget Snapshot data ${snapshot.data} ');
               print(
                   '_weeksRemainingWidget Snapshot data length ${snapshot.data.length} ');
+
               if (double.parse('${snapshot.data[0]['weeklyContribution']}') >
                   0.0) {
                 _weeksRemaining = (double.parse(
@@ -368,13 +377,83 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         shadowColor: Color(0x802196F3),
         child: InkWell(
             // Do onTap() if it isn't null, otherwise do print()
-            onTap: onTap != null
-                ? () => onTap()
-                : () {
-                    print('Not set yet');
-                  },
+            onTap: onTap != null ? () => onTap() : () => print('Not set yet'),
             child: child));
   }
+
+  Widget roundedRectButton(String title, List<Color> gradient,
+      bool isEndIconVisible, ButtonPressType whichButtonPressed) {
+    return Builder(builder: (BuildContext mContext) {
+      return GestureDetector(
+        onTap: () {
+          switch (whichButtonPressed) {
+            case ButtonPressType.addButtonType:
+              setState(() {
+                _submitAddCurrentFunds(_enteredText);
+              });
+              break;
+            case ButtonPressType.subtractButtonType:
+              setState(() {
+                _submitSubtractCurrentFunds(_enteredText);
+              });
+              break;
+            default:
+              print('Not set yet');
+          }
+        },
+        child: Container(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: Stack(
+              alignment: Alignment(1.0, 0.0),
+              children: <Widget>[
+                Container(
+                  alignment: Alignment.center,
+                  width: MediaQuery.of(mContext).size.width / 2.9,
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30.0)),
+                    gradient: LinearGradient(
+                        colors: gradient,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight),
+                  ),
+                  child: Text(title,
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500)),
+                  padding: EdgeInsets.only(top: 16, bottom: 16),
+                ),
+                Visibility(
+                  visible: isEndIconVisible,
+                  child: Padding(
+                      padding: EdgeInsets.only(right: 10),
+                      child: Icon(
+                        (whichButtonPressed == ButtonPressType.addButtonType)
+                            ? Icons.add
+                            : Icons.remove,
+                        size: 30,
+                        color: Colors.white,
+                      )),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  static const List<Color> addFundsGradients = [
+    Color(0xFF0EDED2),
+    Color(0xFF03A0FE),
+  ];
+
+  static const List<Color> removeFundsGradients = [
+    Color(0xFFFF9945),
+    Color(0xFFFc6076),
+  ];
 
   void _showSnackBar(String text) {
     scaffoldKey.currentState
@@ -390,6 +469,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
     _db.values['my_fund_tracker_table']['targetFunds'] = '$_targetFunds';
     _db.values['my_fund_tracker_table']['weeklyContribution'] =
         '$_weeklyContribution';
+    _db.values['my_fund_tracker_table']['weeklyAutoDeposit'] =
+    '$_weeklyAutoDeposit';
     _db.save('my_fund_tracker_table');
     _showSnackBar("Data saved successfully");
   }
@@ -403,18 +484,20 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
     _db.values['my_fund_tracker_table']['targetFunds'] = '$_targetFunds';
     _db.values['my_fund_tracker_table']['weeklyContribution'] =
         '$_weeklyContribution';
+    _db.values['my_fund_tracker_table']['weeklyAutoDeposit'] =
+    '$_weeklyAutoDeposit';
     _db.save('my_fund_tracker_table');
     _showSnackBar("Data saved successfully");
   }
 
-  void _submitUpdateWeekly(double _enteredText) {
+  /*void _submitUpdateWeekly(double _enteredText) {
     _db.values['my_fund_tracker_table']['id'] = 1;
     _db.values['my_fund_tracker_table']['currentFunds'] = '$_currentFunds';
     _db.values['my_fund_tracker_table']['targetFunds'] = '$_targetFunds';
     _db.values['my_fund_tracker_table']['weeklyContribution'] = '$_enteredText';
     _db.save('my_fund_tracker_table');
     _showSnackBar("Data saved successfully");
-  }
+  }*/
 }
 
 /// Reports [error] along with its [stackTrace]
@@ -423,3 +506,5 @@ Future<Null> _reportError(FlutterErrorDetails details) async {
 
   FlutterError.dumpErrorToConsole(details);
 }
+
+enum ButtonPressType { addButtonType, subtractButtonType, updateButtonType }
